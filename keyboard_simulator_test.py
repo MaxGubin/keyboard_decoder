@@ -9,5 +9,8 @@ class KeyboardSimulatorTest(unittest.TestCase):
         for s,e in zip(sample_strings, simulator):
             self.assertEqual(len(s), len(e))
 
+    def test_RandomString(self):
+        for _ in range(10):
+            print(keyboard_simulator.generate_random_string())
 if __name__ == '__main__':
     unittest.main()

@@ -2,6 +2,7 @@ import collections
 import string
 from collections.abc import Sequence
 import re
+import random
 
 import torch.utils.data as data
 
@@ -67,3 +68,14 @@ class KeyboardDataset(data.Dataset):
         encoded = keyboard_encode_coordinates(test_string)
         return encoded
 
+def generate_random_char():
+    rand_index = random.randint(0, ord('z') - ord('a') + 1)
+    return ' ' if 0 == rand_index else chr(ord('a') + rand_index-1)
+
+def generate_random_string():
+    random_len = random.randint(5, 15)
+    return "".join(( generate_random_char() for _ in range(random_len))) 
+
+class RandomKeyboardDataset(KeyboardDataset):
+    def __init__(self, dataset_size):
+        super.__init__([generate_random_string() for _ in range(dataset_size)])
