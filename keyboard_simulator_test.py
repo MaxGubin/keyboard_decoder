@@ -10,7 +10,12 @@ class KeyboardSimulatorTest(unittest.TestCase):
             self.assertEqual(len(s), len(e))
 
     def test_RandomString(self):
-        for _ in range(10):
-            print(keyboard_simulator.generate_random_string())
+        NUM_SAMPLES = 100
+        simulator = keyboard_simulator.RandomKeyboardDataset(dataset_size=NUM_SAMPLES)
+        self.assertEqual(NUM_SAMPLES, len(simulator))
+        for x,y in enumerate(simulator):
+            print(y)
+        self.assertEqual(x, NUM_SAMPLES-1)
+
 if __name__ == '__main__':
     unittest.main()
