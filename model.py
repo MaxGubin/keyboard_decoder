@@ -1,9 +1,8 @@
 from collections.abc import Sequence
-import jax
-import jax.numpy as jnp
-import optax
-from flax import linen as nn
-from flax.training import train_state
+
+import torch
+from torch import nn
+
 import keyboard_simulator
 from tqdm import tqdm
 
@@ -11,85 +10,59 @@ from tqdm import tqdm
 class KeyboardDecoder(nn.Module) :
     """Simple keyboard decoder
     """
-    layer_sizes: Sequence[int]
-    output_size: int
 
-    def setup(self):
-        self.layers = [nn.Dense(features=ms) for ms in self.layer_sizes]
-        self.output_layer = nn.Dense(self.output_size)
+    def __init__(self, layer_sizes:Sequence[int], output_size:int):
+        super(KeyboardDecoder, self).__init__()
+        self.fully_connected_layers = [nn.Linear(ms[0],ms[1]) for ms in layer_sizes]
+        self.relus = [nn.ReLU()]*len(layer_sizes)
+        self.output_layer = nn.Linear(layer_sizes[-1][1], output_size)
 
-    def __call__(self, x):
-        for lr in self.layers:
-            x = lr(x)
-            x = nn.relu(x)
+    def forward(self, x):
+        for linear, relu in zip(self.fully_connected_layers, self.relus):
+            x = linear(x)
+            x = relu(x)
         return self.output_layer(x)
 
-def ConvertPointsToInput(points: Sequence[keyboard_simulator.CGPoint]) -> jnp.ndarray:
-    output = jnp.array([[p.x,p.y] for p in points], dtype=jnp.float32)
+def ConvertPointsToInput(points: Sequence[keyboard_simulator.CGPoint]) -> torch.Tensor:
+    output = torch.tensor([[p.x,p.y] for p in points], dtype=torch.float32)
     return output
 
 
-def BuildOptimizer():
+def BuildOptimizer(model):
     """Creates an optimizer"""
-    return optax.adam(learning_rate=0.01)
+    return torch.optim.Adam(model.parameters(), lr=0.01)
 
 def BuildModel():
     """Builds a model and initialize parameters."""
-    model = KeyboardDecoder(layer_sizes=[128, 128, 128], output_size=27)
-    rng = jax.random.PRNGKey(42)
-    rng, inp_rng, init_rng = jax.random.split(rng, 3)
-    inp = jax.random.normal(inp_rng, (2,)) 
-    params = model.init(init_rng, inp)
-    state = train_state.TrainState.create(apply_fn=model.apply, params=params, tx=BuildOptimizer())
-    return (model, params, state)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model = KeyboardDecoder(layer_sizes=[(2,128), (128, 128), (128, 128)], output_size=keyboard_simulator.NUM_CLASSES).to(device)
+    return model
 
-def BuildOptimizer():
-    """Creates an optimizer"""
-    return optax.adam(learning_rate=0.01)
+def TrainLoop(model:nn.Module, optimizer:torch.optim.Optimizer, num_steps:int):
+    loss_fn = nn.CrossEntropyLoss()
+    for n_batch in range(num_steps):
+        points, labels = keyboard_simulator.random_batch_sample(128)
+        data_points = ConvertPointsToInput(points)
+        data_labels = torch.tensor(labels, dtype=torch.long)
 
-
-def calculate_loss_accuracy(state, params, batch)->tuple[jnp.array, jnp.array]:
-    points, labels = batch
-    data_input = ConvertPointsToInput(points)
-    data_labels = jnp.array(labels, dtype=jnp.int32)
-    logits = state.apply_fn(params, data_input)
-    labels_onehot = jax.nn.one_hot(labels, num_classes=keyboard_simulator.NUM_CLASSES)
-    loss = optax.softmax_cross_entropy(logits=logits, labels=labels_onehot).mean()
-    accuracy = jnp.mean(jnp.argmax(logits, -1) == data_labels)
-    return (loss, accuracy)
+        logits = model(data_points)
+        loss = loss_fn(logits, data_labels)
+        acc = (logits.argmax(1) == data_labels).type(torch.float32).sum().item()/128
 
 
-#@jax.jit  # Jit the function for efficiency
-def train_step(state, batch):
-    # Gradient function
-    grad_fn = jax.value_and_grad(calculate_loss_accuracy,  # Function to calculate the loss
-                                 argnums=1,  # Parameters are second argument of the function
-                                 has_aux=True  # Function has additional outputs, here accuracy
-                                )
-    # Determine gradients for current model, parameters and batch
-    (loss, acc), grads = grad_fn(state, state.params, batch)
-    # Perform parameter update with gradients and optimizer
-    state = state.apply_gradients(grads=grads)
-    # Return state and any other value we might want
-    return state, loss, acc
+        # Backprop
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        if n_batch % 10 == 0:
+            loss_item = loss.item()
+            print(f"Batch {n_batch} Loss {loss_item} Acc {acc}")
 
-
-#@jax.jit  # Jit the function for efficiency
-def eval_step(state, batch):
-    # Determine the accuracy
-    _, acc = calculate_loss_accuracy(state, state.params, batch)
-    return acc
-
-def train_model(state, num_epochs=100):
-    # Training loop
-    for epoch in tqdm(range(num_epochs)):
-        state, loss, acc = train_step(state, keyboard_simulator.random_batch_sample(128))
-        print(f'Loss {loss} Accuracy {acc}')
-    return state
 
 def main():
-    model, _, state =  BuildModel()
-    state = train_model(state)
+    model = BuildModel()
+    optimizer = BuildOptimizer(model)
+    state = TrainLoop(model, optimizer, 5000)
 
 if __name__ == '__main__':
     main()
