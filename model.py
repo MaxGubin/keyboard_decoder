@@ -1,4 +1,4 @@
-from collections.abc import Sequence
+from collections.abc import Sequence, Tuple
 
 import torch
 from torch import nn
@@ -11,7 +11,7 @@ class KeyboardDecoder(nn.Module) :
     """Simple keyboard decoder
     """
 
-    def __init__(self, layer_sizes:Sequence[int], output_size:int):
+    def __init__(self, layer_sizes:Sequence[Tuple(int, int)], output_size:int):
         super(KeyboardDecoder, self).__init__()
         self.fully_connected_layers = [nn.Linear(ms[0],ms[1]) for ms in layer_sizes]
         self.relus = [nn.ReLU()]*len(layer_sizes)

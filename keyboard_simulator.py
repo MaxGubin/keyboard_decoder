@@ -21,7 +21,7 @@ QWERTY_MAP = {
     'i': (8, CGPoint(x=0.75, y=0.125)),
     'o': (9, CGPoint(x=0.85, y=0.125)),
     'p': (10, CGPoint(x=0.95, y=0.125)),
-        
+
     'a': (11, CGPoint(x=0.10, y=0.375)),
     's': (12, CGPoint(x=0.20, y=0.375)),
     'd': (13, CGPoint(x=0.30, y=0.375)),
@@ -31,7 +31,7 @@ QWERTY_MAP = {
     'j': (17, CGPoint(x=0.70, y=0.375)),
     'k': (18, CGPoint(x=0.80, y=0.375)),
     'l': (19, CGPoint(x=0.90, y=0.375)),
-        
+
     'z': (20, CGPoint(x=0.20, y=0.625)),
     'x': (21, CGPoint(x=0.30, y=0.625)),
     'c': (22, CGPoint(x=0.40, y=0.625)),
@@ -40,49 +40,60 @@ QWERTY_MAP = {
     'n': (25, CGPoint(x=0.70, y=0.625)),
     'm': (26, CGPoint(x=0.80, y=0.625)),
 
+    # PAD value
+    '#': (27, CGPoint(x=-1, y=-1))
 }
 
 NUM_CLASSES = len(QWERTY_MAP.keys())
+PAD_ID = 27
 REPLACE_WITH_SPACE = '[^a-z]'
 
-def normalize_string(text:str)->str:
+
+def normalize_string(text: str) -> str:
     return re.sub(REPLACE_WITH_SPACE, ' ', text.lower())
 
-def keyboard_encode_coordinates(text: str)->tuple[Sequence[int], Sequence[CGPoint]]:
-    result_points=[]
+
+def keyboard_encode_coordinates(text: str) -> tuple[Sequence[int], Sequence[CGPoint]]:
+    result_points = []
     result_codes = []
     for c in text.lower():
         if c in QWERTY_MAP:
-            code, point = QWERTY_MAP[c] 
+            code, point = QWERTY_MAP[c]
             result_codes.append(code)
             result_points.append(point)
     return result_points, result_codes
 
 
 def random_batch_sample(batch_size):
-    random_string = "".join(( generate_random_char() for _ in range(batch_size)))
-    return keyboard_encode_coordinates(random_string)    
+    random_string = "".join((generate_random_char()
+                            for _ in range(batch_size)))
+    return keyboard_encode_coordinates(random_string)
+
 
 class KeyboardDataset(data.Dataset):
-    def __init__(self, text_set:Sequence[str]):
+    def __init__(self, text_set: Sequence[str]):
         self.text_set = text_set
 
     def __len__(self):
         return len(self.text_set)
-    
-    def __getitem__(self, idx)->Sequence[CGPoint]:
+
+    def __getitem__(self, idx) -> Sequence[CGPoint]:
         test_string = normalize_string(self.text_set[idx])
         encoded = keyboard_encode_coordinates(test_string)
         return encoded
+
 
 def generate_random_char():
     rand_index = random.randint(0, ord('z') - ord('a') + 1)
     return ' ' if 0 == rand_index else chr(ord('a') + rand_index-1)
 
+
 def generate_random_string():
     random_len = random.randint(5, 15)
-    return "".join(( generate_random_char() for _ in range(random_len))) 
+    return "".join((generate_random_char() for _ in range(random_len)))
+
 
 class RandomKeyboardDataset(KeyboardDataset):
     def __init__(self, dataset_size):
-        super().__init__([generate_random_string() for _ in range(dataset_size)])
+        super().__init__([generate_random_string()
+                          for _ in range(dataset_size)])
