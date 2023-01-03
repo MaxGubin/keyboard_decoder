@@ -9,7 +9,7 @@ import torch.utils.data as data
 CGPoint = collections.namedtuple("CGPoint", ['x', 'y'])
 
 QWERTY_MAP = {
-    ' ': (0, CGPoint(x=0.50, y=0.063)),
+    ' ': (0, CGPoint(x=0.50, y=0.875)),
 
     'q': (1, CGPoint(x=0.05, y=0.125)),
     'w': (2, CGPoint(x=0.15, y=0.125)),

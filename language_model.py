@@ -18,9 +18,9 @@ MAX_LEN = 50
 class DecoderLSTM(nn.Module):
     def __init__(self, input_layer_sizes: Sequence[Tuple[int, int]], lstm_hidden_size: int, lstm_num_layers: int, output_size: int):
         super(DecoderLSTM, self).__init__()
-        self.fully_connected_layers = [
-            nn.Linear(ms[0], ms[1]) for ms in input_layer_sizes]
-        self.relus = [nn.ReLU()]*len(input_layer_sizes)
+        self.fully_connected_layers = nn.ModuleList([
+            nn.Linear(ms[0], ms[1]) for ms in input_layer_sizes])
+        self.relus = nn.ModuleList([nn.ReLU()]*len(input_layer_sizes))
         lstm_input_size = input_layer_sizes[-1][-1]
         self.lstm = nn.LSTM(input_size=lstm_input_size, hidden_size=lstm_hidden_size,
                             num_layers=lstm_num_layers, batch_first=True) if lstm_num_layers > 0 else None
@@ -101,9 +101,10 @@ def TrainLSTMModel(train_dataloader: torch.utils.data.DataLoader, checkpoint_pas
             }, checkpoint_pass)
 
     # Save the last checkpoint.
+    model_state = model.state_dict()
     torch.save({
         'step': step,
-        'model_state': model.state_dict(),
+        'model_state': model_state,
         'optimizer_state': optimizer.state_dict()
     }, checkpoint_pass)
 
@@ -140,7 +141,7 @@ def PrepareDataset(is_training: bool) -> torch.utils.data.DataLoader:
 def ParseArguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument('--command', choices=['train', 'eval'], default='eval')
-    parser.add_argument('--checkpoint_pass', default='keyboard_predictor.cpt')
+    parser.add_argument('--checkpoint_pass', default='keyboard_predictor.pt')
     return parser.parse_args()
 
 
