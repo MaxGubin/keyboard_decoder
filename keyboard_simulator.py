@@ -8,6 +8,11 @@ import torch.utils.data as data
 
 CGPoint = collections.namedtuple("CGPoint", ['x', 'y'])
 
+# We assume that all keys have the same size and adding noise bigger than
+# this size introduces typing outside of the key.
+X_PRECISION=0.05
+Y_PRECISION=0.125
+
 QWERTY_MAP = {
     ' ': (0, CGPoint(x=0.50, y=0.875)),
 
