@@ -45,7 +45,7 @@ def ConvertPointsToInput(points: Sequence[keyboard_simulator.CGPoint]) -> torch.
 def AddTypingNoise(coordinates: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
     """Simple, not correlated noise, returns noised coordinates and a tensor of positions outside keys"""
     bias = torch.normal(mean=0.0, std=0.05, size=(1, 2))
-    typing_noise = torch.normal(mean=0.0, std=0.05, size=coordinates.shape)
+    typing_noise = torch.normal(mean=0.0, std=0.0125, size=coordinates.shape)
     typing_noise += bias
     # A naive estimation of how many points are outside of a key
     # assuming that every key has 2*X_PRECISION 2*Y_PRECISION
